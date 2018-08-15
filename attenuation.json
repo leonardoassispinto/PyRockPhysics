@@ -1,0 +1,21 @@
+{
+    "face_to_face_first_break_time": 0.0075,
+    "minimum_frequency": 300.0,
+    "maximum_frequency": 2300.0,
+    "reference":
+    {
+        "file": "P_Aluminium_50mm_axial_load_3ton_lead_foil.psdata",
+        "length": 50.0,
+        "amplitude_conversion_factor": 1.0,
+        "time_conversion_factor": 0.001,
+        "first_break_time": 0.0155
+    },
+    "sample":
+    {
+        "file": "AC001_PWZ_Axl3MPa_Pc2MPa_Sw0.psdata",
+        "length": 70.0,
+        "amplitude_conversion_factor": 0.001,
+        "time_conversion_factor": 0.001,
+        "first_break_time": 0.029
+    }
+}

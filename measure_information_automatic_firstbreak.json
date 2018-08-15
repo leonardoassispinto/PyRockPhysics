@@ -1,0 +1,17 @@
+{
+    "experiment_information":
+    [
+        {
+            "face_to_face_file": "P_face_to_face_axial_load_3ton_lead_foil.psdata",
+            "sample_information":
+            [
+                {
+                    "file": "P_Aluminium_50mm_axial_load_3ton_lead_foil.psdata",
+                    "length": 50,
+                    "type": "Aluminium",
+                    "time_convertion_factor": 1
+                }
+            ]
+        }
+    ]
+}
