@@ -1,3 +1,5 @@
+#method.py
+
 import numpy as np
 import pymc as pm
 import gamma_distribution
@@ -5,21 +7,13 @@ import prior_parameters
 import arrival_distribution
 from scipy.stats import boxcox
 
-# TODO: dividir essa função em:
-# 1. (DONE) Uma função (ou várias) que calcula a probabilidade a priori da primeira quebra ("arrival"): trapézio
-#     1.1 Criar uma outra função que utiliza qualquer distribuição de velocidade, não somente de com thresholds (trapézio)
-# 2. (DONE) Uma função (ou várias) que calcula os parâmetros da probabilidade a priori das variâncias (a1, b1, a2, b2) em função do dado e do retorno da função de cima
-# 3. (DONE) Uma função que vai gerar as cadeias a partir dos resultados das duas funções acima
-# 4. (DONE) Uma função (ou mais) que "sumariza" as cadeias (plota as cadeias, calcula MAP, etc)
-# 5. Fazer com que a função infer_arrival já receba o dado com o tempo "pré-processado" (sem tempos negativos e descontado o face-to-face)
-
 def infer_arrival(amplitude, time, arrival_prior_probs, fac, chainsize=50000, burnin=10000, thin=4, useboxcox=True):
     n = len(amplitude)
 
     dt = time[1] - time[0]
     t0 = time[0]
     
-    # Transoformada de Box-Cox para forçar normalidade no dado
+    # Box-Cox Transoformation to force datum normalization
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html
     # https://en.wikipedia.org/wiki/Power_transform#Box-Cox_transformation
     if useboxcox:
@@ -59,6 +53,11 @@ def infer_arrival(amplitude, time, arrival_prior_probs, fac, chainsize=50000, bu
 
 
 def summarize(arrival_samples):
-    summary = {'map': np.mean(arrival_samples)}
+    mean = np.mean(arrival_samples)
+    p05 = np.percentile(arrival_samples, 5)
+    p95 = np.percentile(arrival_samples, 95)
+    if p05 == p95:
+        p05 = np.min(arrival_samples)
+        p95 = np.max(arrival_samples)
+    summary = {'map': mean, 'p05': p05, 'p95': p95}
     return summary
-

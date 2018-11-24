@@ -1,3 +1,5 @@
+#pior_parameters.py
+
 import pymc as pm
 import gamma_distribution
 import numpy as np

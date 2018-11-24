@@ -1,3 +1,5 @@
+#plug_parameters.py
+
 import numpy as np
 
 def standard_velocities(rock_type, filename):

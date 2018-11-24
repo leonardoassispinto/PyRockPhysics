@@ -1,3 +1,5 @@
+#arraival_distribution.py
+
 import pymc as pm
 import numpy as np
 

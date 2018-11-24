@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+#picoscopereader.py
 
 import numpy as np
 import os
 import hashlib
+import re
 
 infinite_char = '\xe2\u02c6\u017e'
 infinite_char_replacement = '9999999'
@@ -37,34 +39,41 @@ def load_psdata_bufferized(filename, deletefile, bufferdirectory="."):
     return time, waves
 
 def load_psdata(filename, deletefile=True):
-    # nesse caso o nome do arquivo é inválido
+    # in this case the file is invalidated
     if not os.path.exists(filename):
         print("File {} does not exist".format(filename))
         return None
 
     res = convert_pico_file(filename, "txt")
 
-    # nesse caso a conversão falhou
+    # convertion failed
     if not res:
         print("Erro ao converter o arquivo {}".format(filename))
         return None
     
     txtfilename = filename.replace(".psdata", ".txt")
 
-    # numpy está bugado
-    # with open(txtfilename, 'r', encoding='utf-8') as f:
-        # data = np.loadtxt(f, delimiter=',', skiprows=3)
-    
+    # reading units of the header
+    header = open_csv_header(txtfilename, delimiter="\t", rows=3)
+    units = [re.match(r"\((\s*\w*\s*)\)", a)[1] for a in header[1]]
+
     data = open_csv(txtfilename, delimiter="\t", skiprows=3)
 
-    # deleta o arquivo caso desejado
+    # units convertion
+    for unit, d in zip(units, data.T):
+        if unit.lower() == "mv":
+            d /= 1000.0
+        elif unit.lower() == "ms":
+            d *= 1000.0
+
+    # delete the file if it is desired
     if deletefile:
         command = 'del {}'.format(txtfilename)
         res = os.system(command)
         if res != 0:
             print("Erro ao deletar o arquivo temporário {}".format(txtfilename))
     
-    time = data[:, 0].flatten() # transforma matriz de 1 coluna em vetor
+    time = data[:, 0].flatten() # 1 column matrix transformation in vector
     waves = data[:, 1:].transpose()
 
     return time, waves
@@ -72,15 +81,26 @@ def load_psdata(filename, deletefile=True):
 def load_csv(filename, delimiter=',', skiprows=0):
     data = open_csv(filename, delimiter=delimiter, skiprows=skiprows)
 
-    time = data[:, 0].flatten() # transforma matriz de 1 coluna em vetor
+    time = data[:, 0].flatten() # 1 column matrix transformation in vector
     waves = data[:, 1:].transpose()
 
     return time, waves
 
+def open_csv_header(filename, rows, delimiter=','):
+    with open(filename, 'r') as f:
+        header = []
+        for i, line in enumerate(f):
+            if i + 1 == rows:
+                break
+            if not line.strip():
+                continue
+            header.append(line.split(delimiter))
+    return header
+
 def open_csv(filename, delimiter=',', skiprows=0):
     with open(filename, 'r') as f:
         for i in range(skiprows):
-            f.readline()
+            line = f.readline()
         
         data = []
         linenumber = skiprows

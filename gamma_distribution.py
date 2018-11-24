@@ -1,3 +1,5 @@
+#gamma_distribution.py
+
 from scipy.special import gamma as gamma_fun
 import numpy as np
 

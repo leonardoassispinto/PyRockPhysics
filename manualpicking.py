@@ -1,3 +1,5 @@
+#manualpicking.py
+
 import picoscopereader as psdata
 import matplotlib.pyplot as plt
 import sys
@@ -49,37 +51,6 @@ def main(time, wave, length, ax, callback, t0=0, line_color="r", line_style="sol
     click_handler = ClickHandler(line, line_color=line_color, line_style=line_style, callback=callback)
     return line, click_handler
 
-if __name__ == '__main__':
-    import argparse
-
-    # Parsing command line input
-    ap = argparse.ArgumentParser()
-    ap.add_argument("-i", "--input", required=True, help="Input file")
-    ap.add_argument("-l", "--length", type=float, required=True, help="Core length")
-    ap.add_argument("-t", "--t0", type=float, default=0, help="Start time")
-    ap.add_argument("-c", "--line_color", default="r", help="Pick line color (matplotlib style)")
-    ap.add_argument("-s", "--line_style", default="solid", help="Pick line style (matplotlib style)")
-    
-    args = vars(ap.parse_args())
-
-    file_name = args["input"]
-    length = args["length"]
-    t0 = args["t0"]
-    line_color = args["line_color"]
-    line_style = args["line_style"]
-
-    time, waves = psdata.load_psdata_bufferized(file_name, False, "buffer")
-
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-
-    def print_pick_data(pick_position):
-        print("Pick = {:.2f}; Velocity = {:.2f}".format(pick_position, length/(pick_position - t0)))
-
-    main(time, waves[0], length, ax, print_pick_data, t0=t0, line_color=line_color, line_style=line_style)
-
-    ax.set_xlim(t0, np.nanmax(time))
-    ymax = np.percentile(np.abs(waves[0][(~np.isnan(waves[0])) & (time >= t0)]), 99.95)
-    ax.set_ylim(-1.2*ymax, 1.2*ymax)
-
-    plt.show()
+def open_file(filename):
+    time, waves = psdata.load_psdata_bufferized(filename, False, "buffer")
+    return time, waves

@@ -1,3 +1,5 @@
+#firstbreak.py
+
 import arrival_distribution as ar_dis
 import gamma_distribution as gamma
 import method as met
@@ -7,10 +9,9 @@ import numpy as np
 import sys
 import matplotlib.pyplot as plt
 import plug_parameter as plug
-import attenuation as at
 import os
 
-def first_break2(time, wave, t0=0.0, nchains=5, ndiscard=1, length=None, vmin=None, vmax=None, run_twice=False):
+def first_break(time, wave, t0=0.0, nchains=5, ndiscard=1, length=None, vmin=None, vmax=None, run_twice=False):
     time -= t0
     dt = time[1] - time[0]
 
@@ -28,19 +29,34 @@ def first_break2(time, wave, t0=0.0, nchains=5, ndiscard=1, length=None, vmin=No
         factor = 0.01
 
     tas = []
+    p05s = []
+    p95s = []
     for j in range(nchains):
         arrival_samples = met.infer_arrival(wave[where], time[where], arrival_prior_probs[where], factor, chainsize=10000, burnin=2000, thin=4, useboxcox=False)
-        arrival = met.summarize(arrival_samples)['map']
+        summary = met.summarize(arrival_samples)
+        arrival = summary['map']
+        p05 = summary['p05']
+        p95 = summary['p95']
 
         tas.append(arrival*dt + time[where][0])
+        p05s.append(p05*dt + time[where][0])
+        p95s.append(p95*dt + time[where][0])
 
-    ta_1 = sum(sorted(tas)[ndiscard:-ndiscard])/(nchains - 2.0*ndiscard)
+    tas = np.array(tas)
+    p05s = np.array(p05s)
+    p95s = np.array(p95s)
+
+    keep_indexes = np.argsort(tas)[ndiscard:-ndiscard]
+    
+    ta_1 = tas[keep_indexes].mean()
+    p05_1 = p05s[keep_indexes].mean()
+    p95_1 = p95s[keep_indexes].mean()
 
     if not run_twice or (length is None or vmin is None or vmax is None):
-        return ta_1
+        return {"arrival": ta_1, "p05": p05_1, "p95": p95_1}
 
     position = np.argmin(np.abs(ta_1 - time))
-    window_size = 50
+    window_size = 200
     p_start = max(0, position-window_size)
     p_end = min(len(time), position+window_size)
     new_time = time[p_start:p_end]
@@ -48,130 +64,29 @@ def first_break2(time, wave, t0=0.0, nchains=5, ndiscard=1, length=None, vmin=No
 
     where = (new_time >= 0.0)
     arrival_prior_probs = met.prior_parameters.tau_trap(new_time, length, vmin_hard, vmin, vmax_hard, vmax)
-
+    
     tas = []
-
+    p05s = []
+    p95s = []
     for k in range(nchains):
         arrival_samples = met.infer_arrival(new_wave[where], new_time[where], arrival_prior_probs[where], 0.01, chainsize=10000, burnin=2000, thin=4, useboxcox=False)
-        arrival = met.summarize(arrival_samples)['map']
+        summary = met.summarize(arrival_samples)
+        arrival = summary['map']
+        p05 = summary['p05']
+        p95 = summary['p95']
 
         tas.append(arrival*dt + new_time[where][0])
+        p05s.append(p05*dt + new_time[where][0])
+        p95s.append(p95*dt + new_time[where][0])
 
-    ta_2 = sum(sorted(tas)[ndiscard:-ndiscard])/(nchains - 2.0*ndiscard)
+    tas = np.array(tas)
+    p05s = np.array(p05s)
+    p95s = np.array(p95s)
 
-    return ta_2
+    keep_indexes = np.argsort(tas)[ndiscard:-ndiscard]
+    
+    ta_2 = tas[keep_indexes].mean()
+    p05_2 = p05s[keep_indexes].mean()
+    p95_2 = p95s[keep_indexes].mean()
 
-def first_break(face_to_face_files, sample_files, length_sample, sample_type):
-    # Face-to-face must be the first file
-    tff = 0.0
-    tas_firstrun = {}
-
-    # m/s
-    velocities = plug.standard_velocities(sample_type, 'material_velocities.csv')
-
-    Vmin = velocities[0]
-    Vmax = velocities[1]
-    Vmin_hard = Vmin - 0.2*(Vmax-Vmin)
-    Vmax_hard = Vmax + 0.2*(Vmax-Vmin)
-
-    # converting to mm/us
-    Vmin_hard /= 1000.0
-    Vmin /= 1000.0
-    Vmax /= 1000.0
-    Vmax_hard /= 1000.0
-
-    nchains = 5
-
-    # discarded chains in each tip
-    ndiscard = 1
-
-    for j, face_to_face_file in enumerate(face_to_face_files):
-        time, waves = psdata.load_psdata_bufferized(face_to_face_file, False, "buffer")
-        t0 = time[0]
-        dt = time[1] - time[0]
-        where = (time >= 0.0)*(time <= 40.0)
-
-        # It is not possible determine the tau's prior distribution to face-to-face
-        arrival_prior_probs = np.zeros_like(time)
-        arrival_prior_probs[where] = 1.0
-        arrival_prior_probs /= np.sum(arrival_prior_probs)
-
-        nwaves = waves.shape[0]
-        for i, wave in enumerate(waves[:1], 1):
-            tas = []
-
-            for j in range(nchains):
-                arrival_samples = met.infer_arrival(wave[where], time[where], arrival_prior_probs[where], 0.05, chainsize=10000, burnin=2000, thin=4, useboxcox=False)
-                arrival = met.summarize(arrival_samples)['map']
-
-                tas.append(arrival*dt + time[where][0])
-
-            ta = sum(sorted(tas)[ndiscard:-ndiscard])/(nchains - 2.0*ndiscard)
-
-            tff = ta
-            label = 'Face-to-Face Time = {0:.2f} us'.format(tff)
-
-            plt.subplot(nwaves, 1, i)
-            plt.plot(time, wave, "C7")
-            plt.vlines(ta, np.nanmin(wave), np.nanmax(wave), colors='C0', label=label)
-            plt.xlim(0.0, np.nanmax(time))
-            plt.legend()
-
-        tas_firstrun[face_to_face_file] = ta
-
-    for k, sample_file in enumerate(sample_files):
-        time, waves = psdata.load_psdata_bufferized(sample_file, False, "buffer")
-        time -= tff
-        t0 = time[0]
-        dt = time[1] - time[0]
-        nwaves = waves.shape[0]
-        plt.figure()
-
-        for i, wave in enumerate(waves[:1], 1):
-            where = (time >= 0.0)
-            arrival_prior_probs = met.prior_parameters.tau_trap(time, length_sample, Vmin_hard, Vmin, Vmax_hard, Vmax)
-
-            tas = []
-
-            for j in range(nchains):
-                arrival_samples = met.infer_arrival(wave[where], time[where], arrival_prior_probs[where], 0.01, chainsize=10000, burnin=2000, thin=4, useboxcox=False)
-                arrival = met.summarize(arrival_samples)['map']
-
-                tas.append(arrival*dt + time[where][0])
-
-            ta_1 = sum(sorted(tas)[ndiscard:-ndiscard])/(nchains - 2.0*ndiscard)
-
-            position = np.argmin(np.abs(ta_1 - time))
-            window_size = 50
-            p_start = max(0, position-window_size)
-            p_end = min(len(time), position+window_size)
-            new_time = time[p_start:p_end]
-            new_wave = wave[p_start:p_end]
-
-            where = (new_time >= 0.0)
-            arrival_prior_probs = met.prior_parameters.tau_trap(new_time, length_sample, Vmin_hard, Vmin, Vmax_hard, Vmax)
-
-            tas = []
-
-            for b in range(nchains):
-                arrival_samples = met.infer_arrival(new_wave[where], new_time[where], arrival_prior_probs[where], 0.01, chainsize=10000, burnin=2000, thin=4, useboxcox=False)
-                arrival = met.summarize(arrival_samples)['map']
-
-                tas.append(arrival*dt + new_time[where][0])
-
-            ta_2 = sum(sorted(tas)[ndiscard:-ndiscard])/(nchains - 2.0*ndiscard)
-
-            V = length_sample/ta
-            V *= 1000.0
-            print("\nSample file: {}\nFirst break: {:.2f} us\nVelocity: {:.2f} m/s\n".format(sample_file, ta_2 + tff, V))
-            label = 'First Break Time = {:.2f} us\nVelocity = {:.2f} m/s'.format(ta_2 + tff, V)
-
-            plt.subplot(nwaves, 1, i)
-            plt.plot(time, wave, "C7")
-            plt.vlines(ta_2, np.nanmin(wave), np.nanmax(wave), colors='C0', label=label)
-            plt.xlim(0.0, np.nanmax(time))
-            plt.legend()
-
-        tas_firstrun[sample_file] = ta_2
-
-    plt.show()
+    return {"arrival": ta_2, "p05": p05_2, "p95": p95_2}
