@@ -148,6 +148,8 @@ class auto_picking():
 
         label = 'Face to face time = {:.2f} us'.format(t0)
 
+        plt.ion()
+
         plt.figure()
         plt.suptitle(os.path.basename(self.file_name_ftf))
         plt.subplot(1, 1, 1)
@@ -334,6 +336,8 @@ class attenuation():
         ylim_sample_reference = np.max(np.abs(wave_sample_reference))*1.1
         ylim_sample_reference_f = np.max(np.abs(wave_sample_reference_f))*1.1
 
+        plt.ion()
+
         plt.figure()
         plt.suptitle(os.path.basename(self.file_name_sample))
         plt.subplot(1, 1, 1)
@@ -375,6 +379,9 @@ class attenuation():
 
         Q = np.pi*min_length/dydx/v_sample
 
+        plt.ion()
+
+        plt.figure()
         plt.subplot(1, 1, 1)
         plt.plot(x, y)
         plt.plot(x, y_)
